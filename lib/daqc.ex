@@ -32,23 +32,29 @@ defmodule DAQC do
     end
 
     @doc "Return a list of addresses where DACQ boards are present"
-    def discover_boards(ref) do
+    def board_list(ref) do
         Enum.reject(0..7, &(! board_present?(ref, &1)))
     end
 
     @doc "Predicate for presense of a board on specified address"
     @spec board_present?(term, integer) :: bool
     def board_present?(ref, addr) do
-        proper_response_addr = addr+8
-        proper_response = <<proper_response_addr>>
+        proper_response = <<(addr+8)>>
         case getADDR(ref, addr) do
-            {:ok, ^proper_response} -> true
+            ^proper_response -> true
             _ -> false
         end
     end
 
+    @doc "Return the string identifier for this board"
+    def board_id(ref, addr) do
+        ppCMD(ref, addr, 0x01, 0, 0, 20)
+        |> String.trim(<<0x00>>)
+    end
+
+
     @doc "Read from the ADC (channel 8 is double scaled for some reason)"
-    def adc_read(ref, addr, channel) when channel < 7 do
+    def adc_read(ref, addr, channel) when channel <= 7 do
         adc_read_scaled(ref, addr, channel)
     end
     def adc_read(ref, addr, channel) when channel == 8 do
@@ -56,12 +62,18 @@ defmodule DAQC do
     end
 
     defp adc_read_scaled(ref, addr, channel) do
-        {:ok, <<value::big-unsigned-integer-size(16)>>} = ppCMD(ref, addr, 0x30, channel, 0, 2)
-        Float.round((value * 4.096/1024), 3)
+        <<value::16>> = ppCMD(ref, addr, 0x30, channel, 0, 2)
+        Float.round(value * 4.096/1024, 3)
     end
 
     @doc "Read all ADC as list"
-    def adc_read_all(_ref, _addr), do: raise "Not Yet Implemented"
+    # REVIEW - this does not return or scale channel 8
+    def adc_read_all(ref, addr) do
+        bytes = ppCMD(ref, addr, 0x31, 0, 0, 16)
+        <<a::16,b::16,c::16,d::16,e::16,f::16,g::16,h::16>> = bytes
+        [a,b,c,d,e,f,g,h]
+        |> Enum.map(&(Float.round(&1 * 4.096/1024, 3)))
+    end
 
 
     # defp ensure_analog_params(channel, value) do
@@ -125,8 +137,7 @@ defmodule DAQC do
     end
 
     def dout_get_all(ref, addr) do
-        {:ok, <<result>>} = ppCMD(ref, addr, 0x14, 0, 0, 1)
-        result
+        ppCMD(ref, addr, 0x14, 0, 0, 1)
     end
 
     def dout_set_all(ref, addr, byte) do
@@ -146,6 +157,7 @@ defmodule DAQC do
             ppCMD(ref, addr, cmd, bit, arg, bytes2return)
         end
     end
+
 
     @doc """
     Straight port of python getADDR function, used for discovery
@@ -194,6 +206,7 @@ defmodule DAQC do
 
     @gpio_base_addr 8
 
+    @spec ppCMD(term, integer, integer, integer, integer, integer) :: :ok | binary
     def ppCMD(_, addr, _, _, _, _) when addr > 7 do
         {:error, "Address parameter must be between 0 and 7"}
     end
@@ -201,13 +214,21 @@ defmodule DAQC do
         GPIO.write(ref.gpio_frame, 1)
         {:ok, _} = SPI.transfer(ref.spi, <<addr+@gpio_base_addr, cmd, param1, param2>>)
         result = if bytes2return > 0 do
-            :timer.sleep(1)                                       # note 1
-            SPI.transfer(ref.spi, String.duplicate(<<0>>,bytes2return))
+#            :timer.sleep(1)                                       # note 1
+            (0..(bytes2return-1))
+            |> Enum.map(fn (_) -> spi_read_single_byte(ref.spi) end)
+            |> :erlang.list_to_binary
         else
-            {:ok, :written}
+            :ok
         end
         GPIO.write(ref.gpio_frame, 0)
         result
+    end
+
+    defp spi_read_single_byte(spi) do
+        :timer.sleep(5)          # see note 1
+        {:ok, <<byte>>} = SPI.transfer(spi, <<0x00>>)
+        byte
     end
 
 end
