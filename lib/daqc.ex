@@ -252,16 +252,23 @@ defmodule DACQ do
   defmodule DIN do
     @moduledoc "Digital input (DIN) functions"
 
+    @type addr :: DACQ.addr
+    @type bit :: integer
+
     # define guard to ensure DIN bit is valid integer from 0-7
     defmacrop is_bit(b) do
       quote do: (is_integer(unquote(b)) and unquote(b) >= 0 and unquote(b) <= 7)
     end
 
+    @doc "Read a single digital input"
+    @spec read(addr, bit) :: 0 | 1
     def read(addr, bit) when is_bit(bit) do
       <<byte>> = Raw.query(addr, 0x20, bit, 0, 1)
       byte
     end
 
+    @doc "Reads all 8 digital input values as a single byte"
+    @spec read_all(addr) :: integer
     def read_all(addr) do
       <<byte>> = Raw.query(addr, 0x25, 0, 0, 1)
       byte
