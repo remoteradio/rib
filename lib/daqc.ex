@@ -47,6 +47,7 @@ defmodule DACQ do
   alias Circuits.SPI
   alias Circuits.GPIO
 
+  require Bitwise
 
   @doc """
   Initalizes the board
@@ -248,13 +249,32 @@ defmodule DACQ do
     end
   end
 
+  defmodule DIN do
+    @moduledoc "Digital input (DIN) functions"
+
+    # define guard to ensure DIN bit is valid integer from 0-7
+    defmacrop is_bit(b) do
+      quote do: (is_integer(unquote(b)) and unquote(b) >= 0 and unquote(b) <= 7)
+    end
+
+    def read(addr, bit) when is_bit(bit) do
+      <<byte>> = Raw.query(addr, 0x20, bit, 0, 1)
+      byte
+    end
+
+    def read_all(addr) do
+      <<byte>> = Raw.query(addr, 0x25, 0, 0, 1)
+      byte
+    end
+  end
+
   defmodule DOUT do
-    @moduledoc "Digital output Functions"
+    @moduledoc "Digital output (DOUT) functions"
 
     @type addr :: DACQ.addr
     @type bit :: integer
 
-    # define guard to ensure bit is valid (integer from 0-6)
+    # define guard to ensure DOUT bit is valid integer from 0-6
     defmacrop is_bit(b) do
       quote do: (is_integer(unquote(b)) and unquote(b) >= 0 and unquote(b) <= 6)
     end
