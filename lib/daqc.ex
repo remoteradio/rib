@@ -73,6 +73,7 @@ defmodule DACQ do
       :undefined ->
         :ets.new(:pi_plates, [:named_table])
         :ets.insert(:pi_plates, {:io, init_spi_and_gpio()})
+        # NYI - init_all_boards()
         :ok
       _ ->
         {:error, :already_initialized}
@@ -81,9 +82,8 @@ defmodule DACQ do
 
   # create a "global I/O" context, which is stored in ETS by init()
   defp init_spi_and_gpio do
-    {:ok, gpio_frame} = GPIO.open(@ppFRAME, :output)
-    {:ok, gpio_int} = GPIO.open(@ppINT, :input)
-    :ok = GPIO.set_pull_mode(gpio_int, :pullup)
+    {:ok, gpio_frame} = GPIO.open(@ppFRAME, :output, [{:initial_value, 0}])
+    {:ok, gpio_int} = GPIO.open(@ppINT, :input, [{:pull_mode, :pullup}])
     {:ok, spi_ref} = SPI.open(@ppSPI)
 
     %{
@@ -209,6 +209,7 @@ defmodule DACQ do
 
     @type color :: integer
     @type addr :: DACQ.addr
+    @type value :: 0 | 1
 
     # define macro for guard to ensure valid color (0 or 1)
     defmacrop is_color(c), do: quote do: (unquote(c) == 0 or unquote(c) == 1)
@@ -232,20 +233,19 @@ defmodule DACQ do
     end
 
     @doc "Write the state of an LED color"
-    @spec write(addr, color, boolean) :: :ok
-    def write(addr, color, state) when is_boolean(state) do
-      if state do
-        set(addr, color)
-      else
-        clear(addr, color)
-      end
+    @spec write(addr, color, value) :: :ok
+    def write(addr, color, value) when value == 1 do
+      set(addr, color)
+    end
+    def write(addr, color, value) when value == 0 do
+      clear(addr, color)
     end
 
     @doc "Read the state of an LED color"
-    @spec read(addr, color) :: boolean
+    @spec read(addr, color) :: value
     def read(addr, color) do
       <<state>> = Raw.query(addr, 0x63, color, 0, 1)
-      state != 0
+      state
     end
   end
 
@@ -254,6 +254,7 @@ defmodule DACQ do
 
     @type addr :: DACQ.addr
     @type bit :: integer
+    @type value :: 0 | 1
 
     # define guard to ensure DIN bit is valid integer from 0-7
     defmacrop is_bit(b) do
@@ -261,7 +262,7 @@ defmodule DACQ do
     end
 
     @doc "Read a single digital input"
-    @spec read(addr, bit) :: 0 | 1
+    @spec read(addr, bit) :: value
     def read(addr, bit) when is_bit(bit) do
       <<byte>> = Raw.query(addr, 0x20, bit, 0, 1)
       byte
@@ -280,6 +281,7 @@ defmodule DACQ do
 
     @type addr :: DACQ.addr
     @type bit :: integer
+    @type value :: 0 | 1
 
     # define guard to ensure DOUT bit is valid integer from 0-6
     defmacrop is_bit(b) do
@@ -304,14 +306,13 @@ defmodule DACQ do
       Raw.cmd(addr, 0x12, bit)
     end
 
-    @doc "Writes a boolean value to a digital output bit"
-    @spec write(addr, bit, boolean) :: :ok
-    def write(addr, bit, value) when is_bit(bit) and is_boolean(value) do
-      if value do
-        set(addr, bit)
-      else
-        clear(addr, bit)
-      end
+    @doc "Writes a bit value (0 or 1) to a digital output bit"
+    @spec write(addr, bit, value) :: :ok
+    def write(addr, bit, value) when value == 1 do
+      set(addr, bit)
+    end
+    def write(addr, bit, value) when value == 0 do
+      clear(addr, bit)
     end
 
     @doc "Reads the state of all bits at once as a byte"
