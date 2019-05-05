@@ -1,13 +1,13 @@
-defmodule DACQ do
+defmodule DAQC do
 
   @moduledoc """
-  Support for pi-plates (DACQ board only, for now)
+  Support for pi-plates (DAQC board only, for now)
 
   ## Implementation Notes
 
   ### 1. API
 
-  This Started as a more or less direct translation of ppDACQ.py, which is the
+  This Started as a more or less direct translation of ppDAQC.py, which is the
   Python "reference" implementation. As I  went along, I decided to move to more
   to elixir-y idioms, so the API is now quite a bit different.
 
@@ -46,8 +46,6 @@ defmodule DACQ do
 
   alias Circuits.SPI
   alias Circuits.GPIO
-
-  require Bitwise
 
   @doc """
   Initalizes the board
@@ -98,23 +96,23 @@ defmodule DACQ do
   def io_context do
     case :ets.lookup(:pi_plates, :io) do
       [{:io, value}] -> value
-      _ -> raise "DACQ i/o not yet initialized - please call init() first"
+      _ -> raise "DAQC i/o not yet initialized - please call init() first"
     end
   end
 
   defmodule Raw do
-    @moduledoc "Raw I/O functions to talk to DACQ board's microcontroller"
+    @moduledoc "Raw I/O functions to talk to DAQC board's microcontroller"
 
     @gpio_base_addr 8
-    # 1ms delay before each DACQ uController read
-    @dacq_read_delay 1
+    # 1ms delay before each DAQC uController read
+    @daqc_read_delay 1
 
-    @type addr :: DACQ.addr
+    @type addr :: DAQC.addr
 
     @doc "Sends command to the board, without expecting response"
     @spec cmd(addr, integer, integer, integer) :: :ok
     def cmd(addr, cmd, param1, param2 \\ 0) when addr <= 7 do
-      io = DACQ.io_context()
+      io = DAQC.io_context()
       GPIO.write(io.gpio_frame, 1)
       {:ok, _} = SPI.transfer(io.spi, <<addr + @gpio_base_addr, cmd, param1, param2>>)
       GPIO.write(io.gpio_frame, 0)
@@ -124,7 +122,7 @@ defmodule DACQ do
     @doc "Sends query command, returns a binary response of <len> bytes"
     @spec query(addr, integer, integer, integer, integer) :: binary
     def query(addr, cmd, param1, param2, len) when addr <= 7 and len > 0 do
-      io = DACQ.io_context()
+      io = DAQC.io_context()
       GPIO.write(io.gpio_frame, 1)
       {:ok, _} = SPI.transfer(io.spi, <<addr + @gpio_base_addr, cmd, param1, param2>>)
       response =
@@ -137,36 +135,36 @@ defmodule DACQ do
 
     # read an SPI byte - see implementation notes in file for timer rationale
     defp spi_read_single_byte(spi) do
-      :timer.sleep(@dacq_read_delay)
+      :timer.sleep(@daqc_read_delay)
       {:ok, <<byte>>} = SPI.transfer(spi, <<0x00>>)
       byte
     end
   end
 
   defmodule Board do
-    @moduledoc "Functions relating to enumerating and identifying DACQ boards"
+    @moduledoc "Functions relating to enumerating and identifying DAQC boards"
 
-    @doc "Return a list of addresses where DACQ boards are present"
-    @spec address_list() :: list(DACQ.addr)
+    @doc "Return a list of addresses where DAQC boards are present"
+    @spec address_list() :: list(DAQC.addr)
     def address_list do
       Enum.reject(0..7, &(!present?(&1)))
     end
 
-    @doc "Returns true if a DACQ board exists on the specified address"
+    @doc "Returns true if a DAQC board exists on the specified address"
     @spec present?(integer) :: boolean
     def present?(addr) do
       read_raw_address(addr) == (addr + 8)
     end
 
     @doc "Return the string identifier for this board"
-    @spec id(DACQ.addr) :: String.t
+    @spec id(DAQC.addr) :: String.t
     def id(addr) do
       Raw.query(addr, 0x01, 0, 0, 20)
       |> String.trim(<<0x00>>)
     end
 
     @doc "Gets the raw address for a board (should be addr+8)"
-    @spec read_raw_address(DACQ.addr) :: integer
+    @spec read_raw_address(DAQC.addr) :: integer
     def read_raw_address(addr) do
       <<raw_address>> = Raw.query(addr, 0x00, 0, 0, 1)
       raw_address
@@ -177,19 +175,19 @@ defmodule DACQ do
     @moduledoc "Functions related to ADC input"
 
     @doc "Returns voltage from a single ADC channel(0-7)"
-    @spec read(DACQ.addr, DACQ.channel) :: float
+    @spec read(DAQC.addr, DAQC.channel) :: float
     def read(addr, channel) when is_integer(channel) and channel <= 7 do
       read_scaled(addr, channel)
     end
 
-    @doc "Return the system voltage for the DACQ"
-    @spec read_vin(DACQ.addr) :: float
+    @doc "Return the system voltage for the DAQC"
+    @spec read_vin(DAQC.addr) :: float
     def read_vin(addr) do
       2 * read_scaled(addr, 8)
     end
 
     @doc "Returns a list of the voltages from ADC channels 0-7"
-    @spec read_all(DACQ.addr) :: [float]
+    @spec read_all(DAQC.addr) :: [float]
     def read_all(addr) do
       <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>> =
         Raw.query(addr, 0x31, 0, 0, 16)
@@ -197,7 +195,7 @@ defmodule DACQ do
       |> Enum.map(&Float.round(&1 * 4.096 / 1024, 3))
     end
 
-    @spec read_scaled(DACQ.addr, DACQ.channel) :: float
+    @spec read_scaled(DAQC.addr, DAQC.channel) :: float
     defp read_scaled(addr, channel) do
       <<value::16>> = Raw.query(addr, 0x30, channel, 0, 2)
       Float.round(value * 4.096 / 1024, 3)
@@ -208,7 +206,7 @@ defmodule DACQ do
     @moduledoc "Manage the bi-color LED on the board (color 0=red, 1=green)"
 
     @type color :: integer
-    @type addr :: DACQ.addr
+    @type addr :: DAQC.addr
     @type value :: 0 | 1
 
     # define macro for guard to ensure valid color (0 or 1)
@@ -252,7 +250,7 @@ defmodule DACQ do
   defmodule DIN do
     @moduledoc "Digital input (DIN) functions"
 
-    @type addr :: DACQ.addr
+    @type addr :: DAQC.addr
     @type bit :: integer
     @type value :: 0 | 1
 
@@ -279,7 +277,7 @@ defmodule DACQ do
   defmodule DOUT do
     @moduledoc "Digital output (DOUT) functions"
 
-    @type addr :: DACQ.addr
+    @type addr :: DAQC.addr
     @type bit :: integer
     @type value :: 0 | 1
 
