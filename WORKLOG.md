@@ -55,3 +55,14 @@ Guess MAC OS doesn't define any SPI interfaces on the bus!!
 Now, let's check in our project to github...
 
 ```
+
+## Installing Mosquitto
+
+```sh
+$ wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
+sudo apt-key add mosquitto-repo.gpg.key
+cd /etc/apt/sources.list.d
+wget http://repo.mosquitto.org/debian/mosquitto-stretch.list
+apt-get update
+apt-get install mosquitto
+```
