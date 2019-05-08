@@ -1,21 +1,22 @@
 # Rib
 
-**TODO: Add description**
+Beginnings of "RIB" (Radio In Box) Controller
 
-## Installation
+## Build/Run
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `rib` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:rib, "~> 0.1.0"}
-  ]
-end
+```sh
+$ mix deps.get 			# get dependencies
+$ mix					# compile/run
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/rib](https://hexdocs.pm/rib).
+To get a shell into the running application:
 
+```sh
+$ iex -S mix
+```
+
+## Key Modules
+
+- Rib.Application - Starts and supervises everything related to RIB
+- Rib.MQTT - Manages connection to Mosquitto MQTT Server
+- DAQC - Elixir support for Pi-Plates DAQC Board (eventually may move to a dependent library)
