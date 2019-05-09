@@ -19,7 +19,7 @@ defmodule Rib.Controller do
     :ok = DAQC.init()
     Tortoise.publish RIB, "rib/controller/time_last_started", timestamp(), retain: true
     Tortoise.publish RIB, "rib/daqc/id", DAQC.Board.id(0), retain: true
-    Tortoise.publish RIB, "rib/daqc/address_list", DAQC.Board.address_list(), retain: true
+    Tortoise.publish RIB, "rib/daqc/address_list", inspct(DAQC.Board.address_list()), retain: true
 
     # send the first messagesto kick off 100ms and 1000ms repetitve ticks
     send self(), :tick_1000
@@ -43,7 +43,7 @@ defmodule Rib.Controller do
     new_daqc = read_daqc(0)
     Enum.each @daqc_topics, fn {key, subtopic} -> 
       if (state.daqc[key] != new_daqc[key]) do
-        Tortoise.publish RIB, "rib/dacq/#{subtopic}", inspect(new_daqc[key])
+        Tortoise.publish RIB, "rib/daqc/#{subtopic}", inspect(new_daqc[key])
       end
     end
     Process.send_after self(), :tick_100, 100    # schedule another tick in another 100ms
