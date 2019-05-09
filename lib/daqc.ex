@@ -124,7 +124,9 @@ defmodule DAQC do
     def query(addr, cmd, param1, param2, len) when addr <= 7 and len > 0 do
       io = DAQC.io_context()
       GPIO.write(io.gpio_frame, 1)
+      :timer.sleep 1   # experiment to solve read instability on single-byte reads
       {:ok, _} = SPI.transfer(io.spi, <<addr + @gpio_base_addr, cmd, param1, param2>>)
+      :timer.sleep 1   # experiment to solve read instability on single-byte reads
       response =
         0..(len - 1)
         |> Enum.map(fn _ -> spi_read_single_byte(io.spi) end)
