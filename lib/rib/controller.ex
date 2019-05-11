@@ -21,7 +21,8 @@ defmodule Rib.Controller do
     Tortoise.publish RIB, "rib/daqc/id", DAQC.Board.id(0), retain: true
     Tortoise.publish RIB, "rib/daqc/address_list", inspect(DAQC.Board.address_list()), retain: true
 
-    # send the first messagesto kick off 100ms and 1000ms repetitve ticks
+    # send the first messages to kick off 100ms, 1000ms, and 5000ms repetitve ticks
+    send self(), :tick_5000
     send self(), :tick_1000
     send self(), :tick_100
 
@@ -29,6 +30,20 @@ defmodule Rib.Controller do
     {:ok, initial_state}
   end
 
+  # invoked every 5000ms when we receive the :tick_5000 message
+  def handle_info(:tick_5000, state) do
+
+    # get the temperature of the SoC core and format as a rounded float and then publish
+
+    {:ok, coreTemp} = File.read "/sys/class/thermal/thermal_zone0/temp"
+    {coreTemp, _} = Integer.parse coreTemp
+    coreTemp = Float.round (coreTemp / 1000.0), 1
+    coreTemp = Float.to_string(coreTemp)
+    Tortoise.publish RIB, "rib/controller/SoC_core_temp", coreTemp, retain: true
+    Process.send_after self(), :tick_5000, 5000    # schedule another tick in another 5000ms
+    {:noreply, state}
+  end
+  
   # invoked every 1000ms when we receive the :tick_1000 message
   def handle_info(:tick_1000, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
