@@ -114,8 +114,9 @@ defmodule DAQC do
     def cmd(addr, cmd, param1, param2 \\ 0) when addr <= 7 do
       io = DAQC.io_context()
       GPIO.write(io.gpio_frame, 1)
-      :timer.sleep 1   # experiment to solve read instability on single-byte writes
+      :timer.sleep 1   # experiment to solve write instability
       {:ok, _} = SPI.transfer(io.spi, <<addr + @gpio_base_addr, cmd, param1, param2>>)
+      :timer.sleep 1   # experiment to solve write instability
       GPIO.write(io.gpio_frame, 0)
       :ok
     end
