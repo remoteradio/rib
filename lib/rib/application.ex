@@ -7,15 +7,19 @@ defmodule Rib.Application do
   use Application
 
   def start(_type, _args) do
-    # The MQTT handler gets started with it's own separate supervisor, for now
-    {:ok, _} = Rib.MQTT.Handler.start_supervision()
 
     # A list of child processes to be supervised.  These are each
     # started as workers by calling the module's start_link.
     # for instance, {Rib.Worker, arg} Starts a worker by calling
     # Rib.Worker.start_link(arg)
     children = [
-      # # RIB Controller
+      # Tortoise (MQTT Client) Connection
+      {Tortoise.Connection,
+        client_id: RIB,
+        handler: {Rib.MQTT.Handler, []}, # was {Tortoise.Handler.Logger, []}
+        server: {Tortoise.Transport.Tcp, host: 'localhost', port: 1883},
+        subscriptions: [{"rib/#", 0}]},
+      # RIB Controller
       {Rib.Controller, []}
     ]
 

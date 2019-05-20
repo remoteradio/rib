@@ -5,15 +5,8 @@ defmodule Rib.MQTT.Handler do
   the controller.
   """
 
+  require Logger
   use Tortoise.Handler
-
-  def start_supervision() do
-    Tortoise.Supervisor.start_child(
-      client_id: RIB,
-      handler: {Tortoise.Handler.Logger, []},
-      server: {Tortoise.Transport.Tcp, host: 'localhost', port: 1883},
-      subscriptions: [{"rib/#", 0}])
-  end
 
   def init(args) do
     {:ok, args}
@@ -29,11 +22,11 @@ defmodule Rib.MQTT.Handler do
 
   # send all messages matching rib/# to the controller, ignore all
   # others to avoid unknown messages from crashing due to no match
-  def handle_message(["rib" | subtopic], payload, state) do
-  	send(Rib.Controller, {:mqtt_message, subtopic, payload})
+  def handle_message(["rib" | subtopics], payload, state) do
+  	send(Rib.Controller, {:mqtt_message, subtopics, payload})
   	{:ok, state}
   end
-  def handle_message(_topic, _payload, state) do  # default case - ignore msg
+  def handle_message(_topics, _payload, state) do  # ignore unmatched topics
     {:ok, state}
   end
 

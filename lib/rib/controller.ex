@@ -1,5 +1,6 @@
 defmodule Rib.Controller do
 
+  require Logger
   use GenServer
 
   # a map of DAQC state field keys to MQTT topics
@@ -28,6 +29,13 @@ defmodule Rib.Controller do
 
     initial_state = %{daqc: %{}}
     {:ok, initial_state}
+  end
+
+  # GENERAL MESSAGE HANDLERS
+
+  # invoked when we get an MQTT messages -- delegates to handle_mqtt function for clarity
+  def handle_info({:mqtt_message, subtopic, payload}, state) do
+    handle_mqtt(subtopic, payload, state)
   end
 
   # invoked every 5000ms when we receive the :tick_5000 message
@@ -66,6 +74,21 @@ defmodule Rib.Controller do
     Process.send_after self(), :tick_100, 100    # schedule another tick in another 100ms
     {:noreply, %{state | daqc: new_daqc}}
   end
+
+  # MQTT HANDLERS
+  #
+  # These are invoked to handle incoming messages on specific MQTT topics.
+  # Each function clause matches one or more subscriptions
+
+  def handle_mqtt(["test", "logme"], payload, state) do
+    Logger.info "Got rib/test/logme with payload #{payload}"
+    {:noreply, state}
+  end
+  def handle_mqtt(_subtopic, _payload, state) do    # default is just to ignore the message
+    {:noreply, state}
+  end
+
+  # PRIVATE HELPERS
 
   # Return a map with values that reflect the current DAQC state for each key
   defp read_daqc(address) do
