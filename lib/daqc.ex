@@ -42,10 +42,13 @@ defmodule DAQC do
   reliable and performant systems.
 """
 
+  require Logger
+
   # allow ease of referencing Circuits.GPIO.whatever(), as just GPIO.whatever()
 
   alias Circuits.SPI
   alias Circuits.GPIO
+
 
   @doc """
   Initalizes the board
@@ -214,13 +217,13 @@ defmodule DAQC do
     @spec set_color(addr, color) :: :ok
     @doc "Set the LED for <addr> to be one of the 4 possible color states (:off, :red, :green, :yellow)"
     def set_color(addr, color) do
-      color_map = %{off: {0,0}, red: {0,1}, green: {1,0}, yellow: {1,1}}
+      color_map = %{off: {0,0}, red: {1,0}, green: {0,1}, yellow: {1,1}}
       case color_map[color] do
         {r, g} ->
           set_individual_led(addr, 0, r)   # write red state
           set_individual_led(addr, 1, g)   # write green state
         _ ->
-          raise "Invalid color atom passed to set_color"
+          Logger.error "Invalid color atom passed to DAQC.LED.set_color()"
       end
       :ok
     end
