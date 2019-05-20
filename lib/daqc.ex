@@ -214,9 +214,8 @@ defmodule DAQC do
     @type addr :: DAQC.addr
     @type color :: :off | :red | :green | :yellow
 
-    # define a mapping of color atoms to tuples for {red,green} led states
-    # also define an inverse, to map states back to color mappings
-
+    # define a constant map of color atoms to tuples, so :red maps to {1,0}
+    # also define an inverse version, where {1,0} maps to :red, for instance.
     @color_map %{off: {0,0}, red: {1,0}, green: {0,1}, yellow: {1,1}}
     @inverse_color_map (for {k, v} <- @color_map, into: %{}, do: {v, k})
 
