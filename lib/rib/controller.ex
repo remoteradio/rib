@@ -58,6 +58,8 @@ defmodule Rib.Controller do
   def handle_info(:tick_1000, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
     Tortoise.publish RIB, "rib/daqc/led/color", Atom.to_string(DAQC.LED.get_color(0))
+    Tortoise.publish RIB, "rib/daqc/adc/0/raw", Integer.to_string(DAQC.DAC.read(0, 0))
+    Tortoise.publish RIB, "rib/daqc/adc/1/raw", Integer.to_string(DAQC.DAC.read(0, 1))
     Process.send_after self(), :tick_1000, 1000    # schedule another tick in another 1000ms
     {:noreply, state}
   end
@@ -79,10 +81,16 @@ defmodule Rib.Controller do
   # MQTT HANDLERS
   #
   # These are invoked to handle incoming messages on specific MQTT topics.
-  # Each function clause matches one or more subscriptions
+  # Each function clause matches one or more subscriptions.
+  #
+  # For now, these assume board 0.
 
   def handle_mqtt(["daqc", "led", "color", "set"], payload, state) do
-    DAQC.LED.set_color(0, String.to_atom(payload))    # assume board# 0
+    DAQC.LED.set_color(0, String.to_atom(payload))
+    {:noreply, state}
+  end
+  def handle_mqtt(["daqc", "dac", channel, "set"], payload, state) do
+    DAQC.DAC.write(0, String.to_integer(channel), String.to_integer(payload))
     {:noreply, state}
   end
   def handle_mqtt(["test", "logme"], payload, state) do

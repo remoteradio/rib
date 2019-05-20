@@ -178,6 +178,26 @@ defmodule DAQC do
     end
   end
 
+  defmodule DAC do
+    @moduledoc """
+    Functions to deal with DAC as raw (uncalibrated) integer values, that apply to both PWM
+    and DAC.   It looks like the formula to convert to volts is:
+
+    - volts = (Vcc * value) / 1024
+    - value = (volts / vcc) * 1024
+    """
+
+    def write(addr, channel, value) when channel == 0 or channel == 1 do
+      <<hibyte, lowbyte>> = <<value :: 16>>
+      Raw.cmd(addr, 0x40+channel, hibyte, lowbyte)
+    end
+
+    def read(addr, channel) when channel == 0 or channel == 1 do
+      <<value :: 16>> = Raw.query(addr, 0x42+channel, 0, 0, 2)
+      value
+    end
+  end
+
   defmodule ADC do
     @moduledoc "Functions related to ADC input"
 
@@ -215,7 +235,7 @@ defmodule DAQC do
     @type color :: :off | :red | :green | :yellow
 
     # define a constant map of color atoms to tuples, so :red maps to {1,0}
-    # also define an inverse version, where {1,0} maps to :red, for instance.
+    # also define an inverse version, where {1,0} maps to :red, for instance
     @color_map %{off: {0,0}, red: {1,0}, green: {0,1}, yellow: {1,1}}
     @inverse_color_map (for {k, v} <- @color_map, into: %{}, do: {v, k})
 
