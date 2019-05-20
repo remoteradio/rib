@@ -32,18 +32,20 @@ defmodule Rib.Controller do
 
   # invoked every 5000ms when we receive the :tick_5000 message
   def handle_info(:tick_5000, state) do
-
     # get the temperature of the SoC core and format as a rounded float and then publish
-
-    {:ok, coreTemp} = File.read "/sys/class/thermal/thermal_zone0/temp"
-    {coreTemp, _} = Integer.parse coreTemp
-    coreTemp = Float.round (coreTemp / 1000.0), 1
-    coreTemp = Float.to_string(coreTemp)
-    Tortoise.publish RIB, "rib/controller/SoC_core_temp", coreTemp, retain: true
+    # only do this if the /sys/class/thermal filesystem exists (not on macOS)
+    case File.read "/sys/class/thermal/thermal_zone0/temp" do
+      {:ok, coreTemp} ->
+        {coreTemp, _} = Integer.parse(coreTemp)
+        coreTemp = Float.round(coreTemp / 1000.0), 1
+        coreTemp = Float.to_string(coreTemp)
+        Tortoise.publish RIB, "rib/controller/SoC_core_temp", coreTemp, retain: true
+      _ -> nil
+    end
     Process.send_after self(), :tick_5000, 5000    # schedule another tick in another 5000ms
     {:noreply, state}
   end
-  
+
   # invoked every 1000ms when we receive the :tick_1000 message
   def handle_info(:tick_1000, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
@@ -56,7 +58,7 @@ defmodule Rib.Controller do
   # REVIEW replace inspect(..) below with a better way of converting to string payload
   def handle_info(:tick_100, state) do
     new_daqc = read_daqc(0)
-    Enum.each @daqc_topics, fn {key, subtopic} -> 
+    Enum.each @daqc_topics, fn {key, subtopic} ->
       if (state.daqc[key] != new_daqc[key]) do
         Tortoise.publish RIB, "rib/daqc/#{subtopic}", inspect(new_daqc[key])
       end
