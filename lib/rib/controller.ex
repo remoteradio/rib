@@ -89,8 +89,14 @@ defmodule Rib.Controller do
     DAQC.LED.set_color(0, String.to_atom(payload))
     {:noreply, state}
   end
-  def handle_mqtt(["daqc", "dac", channel, "set"], payload, state) do
+  def handle_mqtt(["daqc", "dac", channel, "raw", "set"], payload, state) do
     DAQC.DAC.write(0, String.to_integer(channel), String.to_integer(payload))
+    {:noreply, state}
+  end
+  def handle_mqtt(["daqc", "dac", channel, "set"], payload, state) do
+    volts = String.to_float(payload)
+    dac_value = (volts / state.daqc[:adc_vin]) * 1024
+    DAQC.DAC.write(0, String.to_integer(channel), dac_value
     {:noreply, state}
   end
   def handle_mqtt(["test", "logme"], payload, state) do
