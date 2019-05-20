@@ -37,7 +37,7 @@ defmodule Rib.Controller do
     case File.read "/sys/class/thermal/thermal_zone0/temp" do
       {:ok, coreTemp} ->
         {coreTemp, _} = Integer.parse(coreTemp)
-        coreTemp = Float.round(coreTemp / 1000.0), 1
+        coreTemp = Float.round(coreTemp / 1000.0, 1)
         coreTemp = Float.to_string(coreTemp)
         Tortoise.publish RIB, "rib/controller/SoC_core_temp", coreTemp, retain: true
       _ -> nil
