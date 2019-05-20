@@ -54,15 +54,54 @@ Guess MAC OS doesn't define any SPI interfaces on the bus!!
 
 Now, let's check in our project to github...
 
-```
+## Installing Mosquitto on the Raspberry PI
 
-## Installing Mosquitto
+Mosquitto is a (relatively) lightweight MQTT broker(server) that runs on the Raspberry Pi.
+
+We are going to use the latest Mosquitto (1.6.x), because it supports MQTT V5, with the modern V5 request-response messages, which are useful to control devices reliably.   Because the Raspbian repo only contains Mosquitto 1.4, without support for MQTT V5, we need to install from mosquitto.org's own package repository, rather than the stock Raspberry PI repo.
 
 ```sh
+# First, install the GPG key to the Mosquitto repo on your pi
+
+$ cd ~ # your home directory
 $ wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
-sudo apt-key add mosquitto-repo.gpg.key
-cd /etc/apt/sources.list.d
-wget http://repo.mosquitto.org/debian/mosquitto-stretch.list
-apt-get update
-apt-get install mosquitto
+$ sudo apt-key add mosquitto-repo.gpg.key
+
+# Tell Raspbian to allow access to the mosquitto package repo for
+# Debian "stretch" on which raspbian is based...
+
+$ cd /etc/apt/sources.list.d
+$ sudo wget http://repo.mosquitto.org/debian/mosquitto-stretch.list
+
+# Now, update the APT package repo and install mosquitto server
+$ sudo apt update
+$ sudo apt install mosquitto
+
+# Install the mosquitto-clients (if desired, for local CLI debugging)
+$ sudo apt install mosquitto-clients
 ```
+
+That is it, mosquitto should be up and running now!
+
+## Mosquitto on MAC OS X (not required)
+
+This would be needed only for exploring mirroring the state of the broker on the Raspberry Pi to another broker.
+
+```sh
+$ brew update
+$ brew install mosquitto
+```
+You can make changes to the configuration by editing:
+`/usr/local/etc/mosquitto/mosquitto.conf`
+To have launchd start mosquitto now and restart at login:
+`$ brew services start mosquitto`
+Or, if you don't want/need a background service you can just run:
+`$ mosquitto -c /usr/local/etc/mosquitto/mosquitto.conf`
+
+# Other Topics to Investigate
+
+- Grafana and InfluxDB from MQTT for TSD
+- OpenHAB
+- Blynk (pi)
+- Plotly.js
+- Graphite/Carbon
