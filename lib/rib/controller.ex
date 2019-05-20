@@ -23,9 +23,9 @@ defmodule Rib.Controller do
     Tortoise.publish RIB, "rib/daqc/address_list", inspect(DAQC.Board.address_list()), retain: true
 
     # send the first messages to kick off 100ms, 1000ms, and 5000ms repetitve ticks
-    send self(), :tick_5000
+    send self(), :tick_100        # must be sent first to force read and init state.daqc hash
     send self(), :tick_1000
-    send self(), :tick_100
+    send self(), :tick_5000
 
     initial_state = %{daqc: %{}}
     {:ok, initial_state}
