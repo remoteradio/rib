@@ -208,47 +208,46 @@ defmodule DAQC do
 
   defmodule LED do
     @moduledoc "Manage the bi-color LED on the board (color 0=red, 1=green)"
-
-    @type color :: integer
     @type addr :: DAQC.addr
-    @type value :: 0 | 1
+    @type color :: :off | :red | :green | :yellow
 
-    # define macro for guard to ensure valid color (0 or 1)
-    defmacrop is_color(c), do: quote do: (unquote(c) == 0 or unquote(c) == 1)
-
-    @doc "Set (turn on) one of the LED colors"
-    @spec set(addr, color) :: :ok
-    def set(addr, color) when is_color(color) do
-      Raw.cmd(addr, 0x60, color, 0)
+    @spec set_color(addr, color) :: :ok
+    @doc "Set the LED for <addr> to be one of the 4 possible color states (:off, :red, :green, :yellow)"
+    def set_color(addr, color) do
+      color_map = %{off: {0,0}, red: {0,1}, green: {1,0}, yellow: {1,1}}
+      case color_map[color] do
+        {r, g} ->
+          set_individual_led(addr, 0, r)   # write red state
+          set_individual_led(addr, 1, g)   # write green state
+        _ ->
+          raise "Invalid color atom passed to set_color"
+      end
+      :ok
     end
 
-    @doc "Clear (turn off) one of the LED colors"
-    @spec clear(addr, color) :: :ok
-    def clear(addr, color) when is_color(color) do
-      Raw.cmd(addr, 0x61, color, 0)
+    @doc "Read the color atom for the bicolor LED"
+    @spec get_color(addr) :: color
+    def get_color(addr) do
+      <<r>> = Raw.query(addr, 0x63, 0, 0, 1)       # read red state
+      <<g>> = Raw.query(addr, 0x63, 1, 0, 1)       # read green state
+      case {r,g} do
+        {0,0} -> :off
+        {1,0} -> :red
+        {0,1} -> :green
+        {1,1} -> :yellow
+      end
     end
 
-    @doc "Toggle one of the LED colors"
-    @spec toggle(addr, color) :: :ok
-    def toggle(addr, color) do
-      Raw.cmd(addr, 0x62, color, 0)
+    # Private Helpers
+
+    # set or clear the state of the individual LEDs (0=red or 1=green) that make up the bicolor LED
+    defp set_individual_led(addr, bicolor_id, value) when value == 1 do
+      Raw.cmd(addr, 0x60, bicolor_id, 0)
+    end
+    defp set_individual_led(addr, bicolor_id, value) when value == 0 do
+      Raw.cmd(addr, 0x61, bicolor_id, 0)
     end
 
-    @doc "Write the state of an LED color"
-    @spec write(addr, color, value) :: :ok
-    def write(addr, color, value) when value == 1 do
-      set(addr, color)
-    end
-    def write(addr, color, value) when value == 0 do
-      clear(addr, color)
-    end
-
-    @doc "Read the state of an LED color"
-    @spec read(addr, color) :: value
-    def read(addr, color) do
-      <<state>> = Raw.query(addr, 0x63, color, 0, 1)
-      state
-    end
   end
 
   defmodule DIN do
