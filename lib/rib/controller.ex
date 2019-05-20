@@ -58,8 +58,8 @@ defmodule Rib.Controller do
   def handle_info(:tick_1000, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
     Tortoise.publish RIB, "rib/daqc/led/color", Atom.to_string(DAQC.LED.get_color(0))
-    Tortoise.publish RIB, "rib/daqc/adc/0/raw", Integer.to_string(DAQC.DAC.read(0, 0))
-    Tortoise.publish RIB, "rib/daqc/adc/1/raw", Integer.to_string(DAQC.DAC.read(0, 1))
+    Tortoise.publish RIB, "rib/daqc/dac/0/raw", Integer.to_string(DAQC.DAC.read(0, 0))
+    Tortoise.publish RIB, "rib/daqc/dac/1/raw", Integer.to_string(DAQC.DAC.read(0, 1))
     Process.send_after self(), :tick_1000, 1000    # schedule another tick in another 1000ms
     {:noreply, state}
   end
