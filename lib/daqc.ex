@@ -214,31 +214,37 @@ defmodule DAQC do
     @type addr :: DAQC.addr
     @type color :: :off | :red | :green | :yellow
 
+    # define a mapping of color atoms to tuples for {red,green} led states
+    # also define an inverse, to map states back to color mappings
+
+    @color_map %{off: {0,0}, red: {1,0}, green: {0,1}, yellow: {1,1}}
+    @inverse_color_map (for {k, v} <- @color_map, into: %{}, do: {v, k})
+
+    @doc """
+    Set the color of the LED for <addr> to correspond to color atom
+    (:off, :red, :green, :yellow)
+    """
     @spec set_color(addr, color) :: :ok
-    @doc "Set the LED for <addr> to be one of the 4 possible color states (:off, :red, :green, :yellow)"
     def set_color(addr, color) do
-      color_map = %{off: {0,0}, red: {1,0}, green: {0,1}, yellow: {1,1}}
-      case color_map[color] do
+      case @color_map[color] do
         {r, g} ->
           set_individual_led(addr, 0, r)   # write red state
           set_individual_led(addr, 1, g)   # write green state
-        _ ->
+        _ ->  # color not found in map
           Logger.error "Invalid color atom passed to DAQC.LED.set_color()"
       end
       :ok
     end
 
-    @doc "Read the color atom for the bicolor LED"
+    @doc """
+    Return the color atom (:off, :red, :green, :yellow) corresponding to the bicolor LEDs
+    current state.
+    """
     @spec get_color(addr) :: color
     def get_color(addr) do
-      <<r>> = Raw.query(addr, 0x63, 0, 0, 1)       # read red state
-      <<g>> = Raw.query(addr, 0x63, 1, 0, 1)       # read green state
-      case {r,g} do
-        {0,0} -> :off
-        {1,0} -> :red
-        {0,1} -> :green
-        {1,1} -> :yellow
-      end
+      <<r>> = Raw.query(addr, 0x63, 0, 0, 1) # read red state
+      <<g>> = Raw.query(addr, 0x63, 1, 0, 1) # read green state
+      @inverse_color_map[{r,g}]              # e.g. convert {0,1} to :green
     end
 
     # Private Helpers
