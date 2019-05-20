@@ -94,9 +94,13 @@ defmodule Rib.Controller do
     {:noreply, state}
   end
   def handle_mqtt(["daqc", "dac", channel, "set"], payload, state) do
-    volts = String.to_float(payload)
-    dac_value = (volts / state.daqc[:adc_vin]) * 1024
-    DAQC.DAC.write(0, String.to_integer(channel), floor(dac_value))
+    case Float.parse(payload) do
+      {volts, _rest} ->
+        dac_value = (volts / state.daqc[:adc_vin]) * 1024
+        DAQC.DAC.write(0, String.to_integer(channel), floor(dac_value))
+      :error ->
+        Logger.warn "Invalid DAC voltage requested: #{payload}"
+    end
     {:noreply, state}
   end
   def handle_mqtt(["test", "logme"], payload, state) do
