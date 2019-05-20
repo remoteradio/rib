@@ -96,7 +96,7 @@ defmodule Rib.Controller do
   def handle_mqtt(["daqc", "dac", channel, "set"], payload, state) do
     volts = String.to_float(payload)
     dac_value = (volts / state.daqc[:adc_vin]) * 1024
-    DAQC.DAC.write(0, String.to_integer(channel), dac_value
+    DAQC.DAC.write(0, String.to_integer(channel), dac_value)
     {:noreply, state}
   end
   def handle_mqtt(["test", "logme"], payload, state) do
