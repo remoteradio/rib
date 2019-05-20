@@ -58,8 +58,8 @@ defmodule Rib.Controller do
   def handle_info(:tick_1000, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
     Tortoise.publish RIB, "rib/daqc/led/color", Atom.to_string(DAQC.LED.get_color(0))
-    Tortoise.publish RIB, "rib/daqc/dac/0/raw", Integer.to_string(DAQC.DAC.read(0, 0))
-    Tortoise.publish RIB, "rib/daqc/dac/1/raw", Integer.to_string(DAQC.DAC.read(0, 1))
+    publish_dac_values(0, state)
+    publish_dac_values(1, state)
     Process.send_after self(), :tick_1000, 1000    # schedule another tick in another 1000ms
     {:noreply, state}
   end
@@ -102,6 +102,17 @@ defmodule Rib.Controller do
   end
 
   # PRIVATE HELPERS
+
+  # reads the DAC value from hardware (should be what last written), publishes
+  # both this raw value (at daqc/dac/<channel>/raw) and the computed voltage
+  # (at daqc/dac/<channel>).   Needs to be passed the state so we can calibarate
+  # the DAC values against the current Vcc (which is in state.daqc[:adc_vin])
+  defp publish_dac_values(channel, state) do
+    raw_value = DAQC.DAC.read(0, channel)
+    volts = (raw_value * state.daqc[:adc_vin]) / 1024
+    Tortoise.publish RIB, "rib/daqc/dac/#{channel}/raw", Integer.to_string(raw_value)
+    Tortoise.publish RIB, "rib/daqc/dac/#{channel}", Float.to_string(volts)
+  end
 
   # Return a map with values that reflect the current DAQC state for each key
   defp read_daqc(address) do
