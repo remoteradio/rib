@@ -1,0 +1,48 @@
+""" RIB signal definitions from AA7JV
+    analog inputs
+        FWD pwr  0-5V           daqc/adc/0
+        REF pwr  0-5V           daqc/adc/1
+        PA temp  0-5V           daqc/adc/2
+        RIB temp 0-5V           daqc/adc/3
+        240VAC   0-5V           daqc/adc/4
+    analog outputs
+        (none)
+    digital inputs (TTL)
+        bit0                    daqc/din/0
+        bit1                    daqc/din/1
+        bit2                    daqc/din/2
+        bit3                    daqc/din/3
+        bit4                    daqc/din/4
+        bit5                    daqc/din/5
+        bit6                    daqc/din/6
+        bit7                    daqc/din/7
+        bit8                    TBD
+        bit9                    TBD
+        bit10                   TBD
+        bit11                   TBD (4 TBD inputs)
+    digital outputs (TTL)
+        bit0                    daqc/dout/0
+        bit1                    daqc/dout/1
+        bit2                    daqc/dout/2
+        bit3                    daqc/dout/3
+        bit4                    daqc/dout/4
+        bit5                    daqc/dout/5
+        bit6                    daqc/dout/6
+        bit7                    TBD
+        bit8                    TBD
+        bit9                    TBD
+        bit10                   TBD
+        bit11                   TBD
+        bit12                   TBD
+        bit13                   TBD
+        bit14                   TBD
+        bit15                   TBD
+        bit16                   TBD
+        bit17                   TBD
+        bit18                   TBD
+        bit19                   TBD
+        bit20                   TBD
+        bit21                   TBD
+        bit22                   TBD
+        bit23                   TBD (17 TBD outputs)
+"""
