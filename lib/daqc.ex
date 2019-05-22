@@ -109,6 +109,7 @@ defmodule DAQC do
     @gpio_base_addr 8
     # 1ms delay before each DAQC uController read
     @daqc_read_delay 1
+    @daqc_write_delay 1
 
     @type addr :: DAQC.addr
 
@@ -117,9 +118,9 @@ defmodule DAQC do
     def cmd(addr, cmd, param1, param2 \\ 0) when addr <= 7 do
       io = DAQC.io_context()
       GPIO.write(io.gpio_frame, 1)
-      :timer.sleep 1   # experiment to solve write instability
+      :timer.sleep(@daqc_write_delay)   # experiment to solve write instability
       {:ok, _} = SPI.transfer(io.spi, <<addr + @gpio_base_addr, cmd, param1, param2>>)
-      :timer.sleep 1   # experiment to solve write instability
+      :timer.sleep(@daqc_write_delay)   # experiment to solve write instability
       GPIO.write(io.gpio_frame, 0)
       :ok
     end
@@ -129,9 +130,9 @@ defmodule DAQC do
     def query(addr, cmd, param1, param2, len) when addr <= 7 and len > 0 do
       io = DAQC.io_context()
       GPIO.write(io.gpio_frame, 1)
-      :timer.sleep 1   # experiment to solve read instability on single-byte reads
+      :timer.sleep(@daqc_write_delay)   # experiment to solve write instability
       {:ok, _} = SPI.transfer(io.spi, <<addr + @gpio_base_addr, cmd, param1, param2>>)
-      :timer.sleep 1   # experiment to solve read instability on single-byte reads
+      :timer.sleep(@daqc_write_delay)   # experiment to solve write instability
       response =
         0..(len - 1)
         |> Enum.map(fn _ -> spi_read_single_byte(io.spi) end)
