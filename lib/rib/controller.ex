@@ -108,6 +108,11 @@ defmodule Rib.Controller do
     DAQC.DOUT.write_all(0, String.to_integer(payload))
     {:noreply, state}
   end
+  def handle_mqtt(["daqc", "dout", bit, "set"], payload, state) do
+    Logger.info "Got daqc/dout/#{bit}/set with payload #{payload}"
+    DAQC.DOUT.write(0, String.to_integer(bit), String.to_integer(payload))
+    {:noreply, state}
+  end
   def handle_mqtt(["test", "logme"], payload, state) do
     Logger.info "Got rib/test/logme with payload #{payload}"
     {:noreply, state}
