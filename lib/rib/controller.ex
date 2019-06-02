@@ -18,18 +18,17 @@ defmodule Rib.Controller do
 
   def init(_args) do
     :ok = DAQC.init()
+    addr = DAQC.Board.address_list()
     Tortoise.publish RIB, "rib/controller/time_last_started", timestamp(), retain: true
-    Tortoise.publish RIB, "rib/daqc/address_list", inspect(DAQC.Board.address_list()), retain: true
-    for address <- 0..1 do
-      Tortoise.publish RIB, "rib/daqc/#{address}/id", DAQC.Board.id(address), retain: true
-    end
+#    Tortoise.publish RIB, "rib/daqc/address_list", inspect(DAQC.Board.address_list()), retain: true
+    Enum.each(addr, fn address -> Tortoise.publish RIB, "rib/daqc/#{address}/id", DAQC.Board.id(address), retain: true end)
 
     # send the first messages to kick off 100ms, 1000ms, and 5000ms repetitve ticks
     send self(), :tick_500        # must be sent first to force read and init state.daqc hash
     send self(), :tick_1000
     send self(), :tick_5000
 
-    initial_state = %{daqc: %{}}
+    initial_state = %{addr: addr, daqc: %{}}
     {:ok, initial_state}
   end
 
@@ -57,7 +56,7 @@ defmodule Rib.Controller do
 
   # invoked every 1000ms when we receive the :tick_1000 message
   def handle_info(:tick_1000, state) do
-    for address <- 0..1 do
+    Enum.each state.addr, fn address ->
       Tortoise.publish RIB, "rib/daqc/#{address}/led/color", Atom.to_string(DAQC.LED.get_color(address))
       for channel <- 0..1 do
         publish_dac_values(address, channel, state)
