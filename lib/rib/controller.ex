@@ -44,15 +44,25 @@ defmodule Rib.Controller do
   # REVIEW replace inspect(..) below with a better way of converting to string payload
   def handle_info(:tick_500, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
-    new_daqc = read_daqc(0)
-    Enum.each @daqc_topics, fn {key, subtopic} ->
-      if (state.daqc[key] != new_daqc[key]) do
-        Tortoise.publish RIB, "rib/daqc/#{subtopic}", inspect(new_daqc[key])
-      end
-    end
     Process.send_after self(), :tick_500, 500    # schedule another tick in another 100ms
-    {:noreply, %{state | daqc: new_daqc}}
+
+    #this is only working for DAQC address 0 until I update {state} to allow Enum over addresses
+    {_, state} = Rib.Controller.publish_daqc_delta(0, state)
   end
+
+# this is Garth's original code for :tick_500 handler
+#def handle_info(:tick_500, state) do
+#  Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
+#  new_daqc = read_daqc(0)
+#  Enum.each @daqc_topics, fn {key, subtopic} ->
+#    if (state.daqc[key] != new_daqc[key]) do
+#      Tortoise.publish RIB, "rib/daqc/#{subtopic}", inspect(new_daqc[key])
+#    end
+#  end
+#  Process.send_after self(), :tick_500, 500    # schedule another tick in another 100ms
+#  {:noreply, %{state | daqc: new_daqc}}
+#end
+
 
   # invoked every 1000ms when we receive the :tick_1000 message
   def handle_info(:tick_1000, state) do
@@ -137,6 +147,17 @@ defmodule Rib.Controller do
     volts = (raw_value * state.daqc[:adc_vin]) / 1024
     Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}/raw", Integer.to_string(raw_value)
     Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}", Float.to_string(volts)
+  end
+
+  def publish_daqc_delta(address, state) do
+    new_daqc = read_daqc(address)
+    Enum.each @daqc_topics, fn {key, subtopic} ->
+      if (state.daqc[key] != new_daqc[key]) do
+        Tortoise.publish RIB, "rib/daqc/#{address}/#{subtopic}", inspect(new_daqc[key])
+      end
+    end
+    {:noreply, %{state | daqc: new_daqc}}
+#    {:ok, new_daqc}
   end
 
   # Return a map with values that reflect the current DAQC state for each key
