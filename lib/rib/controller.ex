@@ -39,8 +39,6 @@ defmodule Rib.Controller do
   end
 
   # invoked every 500ms when we receive the :tick_500 message
-  # walk through all topics in the daqc_topics map, and only publish changes to the ones
-  # REVIEW replace inspect(..) below with a better way of converting to string payload
   def handle_info(:tick_500, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
     new_state = Enum.reduce(state.addr, state, fn x, acc -> publish_daqc_delta(x, acc) end)
@@ -121,10 +119,8 @@ defmodule Rib.Controller do
 
   # PRIVATE HELPERS
 
-  # reads the DAC value from hardware (should be what last written), publishes
-  # both this raw value (at daqc/dac/<channel>/raw) and the computed voltage
-  # (at daqc/dac/<channel>).   Needs to be passed the state so we can calibarate
-  # the DAC values against the current Vcc (which is in state.daqc[:adc_vin])
+  # walk through all topics in the daqc_topics map, and only publish delta values
+  # REVIEW replace inspect(..) below with a better way of converting to string payload
   defp publish_daqc_delta(address, state) do
     new_daqc = read_daqc(address)
     Enum.each @daqc_topics, fn {key, subtopic} ->
@@ -135,6 +131,10 @@ defmodule Rib.Controller do
     %{state | address => new_daqc}
   end
 
+  # read the DAC value from hardware (should be what last written), publishes
+  # both this raw value (at daqc/dac/<channel>/raw) and the computed voltage
+  # (at daqc/dac/<channel>).   Needs to be passed the state so we can calibarate
+  # the DAC values against the current Vcc (which is in state.daqc[:adc_vin])
   defp publish_dac_values(address, channel, state) do
     raw_value = DAQC.DAC.read(address, channel)
     volts = (raw_value * state[address][:adc_vin]) / 1024
@@ -142,7 +142,7 @@ defmodule Rib.Controller do
     Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}", Float.to_string(volts)
   end
 
-  # Return a map with values that reflect the current DAQC state for each key
+  # return a map with values that reflect the current DAQC state for each key
   defp read_daqc(address) do
     [a0, a1, a2, a3, a4, a5, a6, a7] = DAQC.ADC.read_all(address)
     %{
