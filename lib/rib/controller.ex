@@ -20,7 +20,6 @@ defmodule Rib.Controller do
     :ok = DAQC.init()
     addr = DAQC.Board.address_list()
     Tortoise.publish RIB, "rib/controller/time_last_started", timestamp(), retain: true
-#    Tortoise.publish RIB, "rib/daqc/address_list", inspect(DAQC.Board.address_list()), retain: true
     Enum.each(addr, fn address -> Tortoise.publish RIB, "rib/daqc/#{address}/id", DAQC.Board.id(address), retain: true end)
 
     # send the first messages to kick off 100ms, 1000ms, and 5000ms repetitve ticks
@@ -28,9 +27,7 @@ defmodule Rib.Controller do
     send self(), :tick_1000
     send self(), :tick_5000
 
-#    init = %{addr: addr}
     initial_state = Map.merge(%{addr: addr}, (Enum.reduce addr, %{}, fn x, acc -> Map.put(acc, x, %{}) end))
-    Logger.info inspect(initial_state)
     {:ok, initial_state}
   end
 
@@ -46,26 +43,10 @@ defmodule Rib.Controller do
   # REVIEW replace inspect(..) below with a better way of converting to string payload
   def handle_info(:tick_500, state) do
     Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
+    new_state = Enum.reduce(state.addr, state, fn x, acc -> publish_daqc_delta(x, acc) end)
     Process.send_after self(), :tick_500, 500    # schedule another tick in another 100ms
-
-    #this is hard-coded until I learn how to Enum over addresses (what, is it too easy?)
-      {_, state} = publish_daqc_delta(0, state)
-      {_, state} = publish_daqc_delta(2, state)
+    {:noreply, new_state}
   end
-
-# this is Garth's original code for :tick_500 handler
-#def handle_info(:tick_500, state) do
-#  Tortoise.publish RIB, "rib/controller/time_last_updated", timestamp(), retain: true
-#  new_daqc = read_daqc(0)
-#  Enum.each @daqc_topics, fn {key, subtopic} ->
-#    if (state.daqc[key] != new_daqc[key]) do
-#      Tortoise.publish RIB, "rib/daqc/#{subtopic}", inspect(new_daqc[key])
-#    end
-#  end
-#  Process.send_after self(), :tick_500, 500    # schedule another tick in another 100ms
-#  {:noreply, %{state | daqc: new_daqc}}
-#end
-
 
   # invoked every 1000ms when we receive the :tick_1000 message
   def handle_info(:tick_1000, state) do
@@ -88,7 +69,7 @@ defmodule Rib.Controller do
       {:ok, core_temp} ->
         {core_temp, _} = Integer.parse(core_temp)
         core_temp = Kernel.round(core_temp / 1000.0)
-        core_temp = Integer.to_string(core_temp)
+        core_temp = Integer.to_string(core_temp) <> "C"
         Tortoise.publish RIB, "rib/controller/SoC_core_temp", core_temp, retain: true
       _ -> nil
     end
@@ -145,21 +126,21 @@ defmodule Rib.Controller do
   # both this raw value (at daqc/dac/<channel>/raw) and the computed voltage
   # (at daqc/dac/<channel>).   Needs to be passed the state so we can calibarate
   # the DAC values against the current Vcc (which is in state.daqc[:adc_vin])
-  defp publish_dac_values(address, channel, state) do
-    raw_value = DAQC.DAC.read(address, channel)
-    volts = (raw_value * state[address][:adc_vin]) / 1024
-    Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}/raw", Integer.to_string(raw_value)
-    Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}", Float.to_string(volts)
-  end
-
-  def publish_daqc_delta(address, state) do
+  defp publish_daqc_delta(address, state) do
     new_daqc = read_daqc(address)
     Enum.each @daqc_topics, fn {key, subtopic} ->
       if (state[address][key] != new_daqc[key]) do
         Tortoise.publish RIB, "rib/daqc/#{address}/#{subtopic}", inspect(new_daqc[key])
       end
     end
-    {:noreply, %{state | address => new_daqc}}
+    %{state | address => new_daqc}
+  end
+
+  defp publish_dac_values(address, channel, state) do
+    raw_value = DAQC.DAC.read(address, channel)
+    volts = (raw_value * state[address][:adc_vin]) / 1024
+    Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}/raw", Integer.to_string(raw_value)
+    Tortoise.publish RIB, "rib/daqc/#{address}/dac/#{channel}", Float.to_string(volts)
   end
 
   # Return a map with values that reflect the current DAQC state for each key
