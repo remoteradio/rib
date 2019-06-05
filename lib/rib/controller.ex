@@ -54,7 +54,6 @@ defmodule Rib.Controller do
       Tortoise.publish RIB, "rib/daqc/#{address}/led/color", Atom.to_string(DAQC.LED.get_color(address))
       for channel <- 0..1 do
         publish_dac_values(address, channel, state)
-        publish_dac_values(address, channel, state)
       end
     end
     Process.send_after self(), :tick_1000, 1000    # schedule another tick in another 1000ms
