@@ -85,7 +85,7 @@ defmodule DAQC do
   defp init_spi_and_gpio do
     {:ok, gpio_frame} = GPIO.open(@ppFRAME, :output, [{:initial_value, 0}])
     {:ok, gpio_int} = GPIO.open(@ppINT, :input, [{:pull_mode, :pullup}])
-    {:ok, spi_ref} = SPI.open(@ppSPI, speed_hz: 500000)
+    {:ok, spi_ref} = SPI.open(@ppSPI, speed_hz: 300000)  # 300kHz bus clock per pi-plates
 
     %{
       gpio_frame: gpio_frame,
